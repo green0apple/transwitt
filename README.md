@@ -1,4 +1,4 @@
-Tweet -> Translate -> Send with various Messangers<br>
+Tweet -> Translate -> Send with various Messengers<br>
 <br>
 Written language : Golang<br>
 Now on developing<br>
