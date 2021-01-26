@@ -1,28 +1,40 @@
 package transwitt
 
+import (
+	"time"
+)
+
 type OperateConfig struct {
 	Twitter   TwitterConfig
-	Messanger MessagnerConfig
+	Messenger MessegnerConfig
 }
 
-type MessagnerConfig struct {
+type MessegnerConfig struct {
 	Telegram TelegramConfig
 	// CustomSender func()
 }
-type APIConfig struct {
-	Telegram TelegramConfig `yaml:"TELEGRAM"`
-	Twitter  TwitterConfig  `yaml:"TWITTER"`
-	Papago   PapagoConfig   `yaml:"PAPAGO"`
-}
 
 type TelegramConfig struct {
-	Token string `yaml:"TOKEN"`
+	Token string
+	Admin int64
 }
 
 type TwitterConfig struct {
-	Token string `yaml:"TOKEN"`
+	ConsumerKey     string
+	ConsumerSecret  string
+	Users           TwitterUsers
+	TPS             float32
+	CountPerRequest int
+}
+
+type TwitterUsers []TwitterUser
+
+type TwitterUser struct {
+	ScreenID  string
+	Nickname  string
+	TweetTime time.Time
 }
 
 type PapagoConfig struct {
-	Token string `yaml:"TOKEN"`
+	Token string
 }
