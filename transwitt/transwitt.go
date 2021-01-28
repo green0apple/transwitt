@@ -7,6 +7,8 @@ import (
 	"log"
 	"time"
 
+	"transwitt/transwitt/translate"
+
 	"github.com/dghubble/go-twitter/twitter"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 	"golang.org/x/oauth2"
@@ -74,6 +76,8 @@ func Run(opconf OperateConfig) error {
 		*/
 	}
 
+	a := translate.Papago{}
+	log.Println(a)
 	// oauth2 configures a client that uses app credentials to keep a fresh token
 	confTwitter := &clientcredentials.Config{
 		ClientID:     opconf.Twitter.ConsumerKey,
