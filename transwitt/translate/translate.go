@@ -10,7 +10,7 @@ import (
 )
 
 func (p Papago) AvailableSourceLanguages() []string {
-	return []string{"ko", "en", "jp", "zh-CN", "zh-TW", "vi", "id", "th", "de", "ru", "es", "it", "fr"}
+	return []string{"ko", "en", "ja", "zh-CN", "zh-TW", "vi", "id", "th", "de", "ru", "es", "it", "fr"}
 }
 
 func (p Papago) AvailableTargetLanguages(sSource string) []string {
