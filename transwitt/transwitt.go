@@ -6,9 +6,9 @@ import (
 	"io/ioutil"
 	"log"
 	"time"
-
 	"transwitt/transwitt/translate"
 
+	"github.com/bwmarrin/discordgo"
 	"github.com/dghubble/go-twitter/twitter"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 	"golang.org/x/oauth2"
@@ -40,44 +40,76 @@ func Run(opconf OperateConfig) error {
 	}
 
 	var (
-		telegram *tgbotapi.BotAPI
-		nAdminID int64
-		err      error
+		telegram         *tgbotapi.BotAPI
+		nTelegramAdminID int64
+		discord          *discordgo.Session
+		sDiscordAdminID  string
+		err              error
 	)
 	if opconf.Messenger.Telegram != (TelegramConfig{}) {
 		telegram, err = tgbotapi.NewBotAPI(opconf.Messenger.Telegram.Token)
 		if err != nil {
-			return err
+			return errors.New("Fail to run transwitt with telegram create bot error " + err.Error())
 		}
-		nAdminID = opconf.Messenger.Telegram.Admin
+		nTelegramAdminID = opconf.Messenger.Telegram.Admin
 		log.Printf("Telegram bot [%s] is authorized", telegram.Self.UserName)
-		/*
-			ucUpdates := tgbotapi.NewUpdate(0)
-			ucUpdates.Timeout = 60
-			chanUpdate, err := telegram.GetUpdatesChan(ucUpdates)
-			if err != nil {
-				return err
-			}
-			// telegram command listener
 
-			go func() {
-				for {
-					select {
-					case u := <-chanUpdate:
-						log.Println("updates : ", chanUpdate)
-						log.Println("From :", u.Message.From.String())
-						log.Println("Date :", u.Message.Date)
-						log.Println("Chat.ID :", u.Message.Chat.ID)
-						log.Println("Chat.UserName :", u.Message.Chat.UserName)
-						log.Println("Text :", u.Message.Text)
+		ucUpdates := tgbotapi.NewUpdate(0)
+		ucUpdates.Timeout = 60
+		chanUpdate, err := telegram.GetUpdatesChan(ucUpdates)
+		if err != nil {
+			return errors.New("Fail to run transwitt with telegram get message error " + err.Error())
+		}
+
+		// telegram command listener
+		go func() {
+			for {
+				select {
+				case u := <-chanUpdate:
+					msg := tgbotapi.NewMessage(u.Message.Chat.ID, u.Message.Text)
+					_, err = telegram.Send(msg)
+					if err != nil {
+						log.Println("Fail to send to Telegram with error", err)
 					}
 				}
-			}()
-		*/
+			}
+		}()
+
 	}
 
-	a := translate.Papago{}
-	log.Println(a)
+	if opconf.Messenger.Discord != (DiscordConfig{}) {
+		discord, err = discordgo.New("Bot " + opconf.Messenger.Discord.Token)
+		if err != nil {
+			return errors.New("Fail to run transwitt with discord create bot error " + err.Error())
+		}
+		discord.AddHandler(func(s *discordgo.Session, m *discordgo.MessageCreate) {
+			// Ignore all messages created by the bot itself
+			// This isn't required in this specific example but it's a good practice.
+			if m.Author.ID == s.State.User.ID {
+				return
+			}
+			s.ChannelMessageSend(m.ChannelID, "echo : "+m.Content)
+		})
+		// In this example, we only care about receiving message events.
+		discord.Identify.Intents = discordgo.IntentsGuildMessages
+		// Open a websocket connection to Discord and begin listening.
+		err = discord.Open()
+		if err != nil {
+			return errors.New("Fail to run transwitt with discord open error " + err.Error())
+		}
+		defer discord.Close()
+		sDiscordAdminID = opconf.Messenger.Discord.Admin
+		log.Printf("Discord bot [%s] is authorized", discord.State.User.Username)
+	}
+	papago := translate.Papago{
+		ClientID:     opconf.Translator.Papago.ClientID,
+		ClientSecret: opconf.Translator.Papago.ClientSecret,
+	}
+	/*
+		if _, err := papago.GetTranslate("ko", "ja", "1"); err != nil { // API test
+			return errors.New("Fail to run transwitt with papago tranlsate error " + err.Error())
+		}
+	*/
 	// oauth2 configures a client that uses app credentials to keep a fresh token
 	confTwitter := &clientcredentials.Config{
 		ClientID:     opconf.Twitter.ConsumerKey,
@@ -176,12 +208,26 @@ func Run(opconf OperateConfig) error {
 						log.Println(tCreatedAt.Local().String())
 						log.Println(t.FullText)
 						Users[i].TweetTime = tCreatedAt
-
-						sMessage := fmt.Sprintf("[%s] from [%s]\r\n%s", tCreatedAt.Local().String(), u.Nickname, t.FullText)
-						msg := tgbotapi.NewMessage(nAdminID, sMessage)
-						_, err = telegram.Send(msg)
+						sTranslated, err := papago.GetTranslate(u.Language.Source, u.Language.Target, t.FullText)
 						if err != nil {
-							log.Println("Fail to send to Telegram with error", err)
+							sTranslated = "[Translate Error!!]\r\n" + err.Error() + "\r\n"
+							sTranslated += t.FullText
+							log.Println("Fail to translate with error", err)
+						}
+
+						sMessage := fmt.Sprintf("[%s] from [%s]\r\n%s", tCreatedAt.Local().String(), u.Nickname, sTranslated)
+						if telegram != nil {
+							msg := tgbotapi.NewMessage(nTelegramAdminID, sMessage)
+							_, err = telegram.Send(msg)
+							if err != nil {
+								log.Println("Fail to send to Telegram with error", err)
+							}
+						}
+						if discord != nil {
+							_, err = discord.ChannelMessageSend(sDiscordAdminID, sMessage)
+							if err != nil {
+								log.Println("Fail to send to Discord with error", err)
+							}
 						}
 					}
 				}
