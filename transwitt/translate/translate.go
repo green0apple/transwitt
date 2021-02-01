@@ -57,6 +57,7 @@ func (p Papago) GetTranslate(sSource, sTarget, sText string) (string, error) {
 	if err != nil {
 		return "", nil
 	}
+	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("X-Naver-Client-Id", p.ClientID)
 	req.Header.Add("X-Naver-Client-Secret", p.ClientSecret)
 	client := &http.Client{}

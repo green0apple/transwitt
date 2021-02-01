@@ -153,10 +153,12 @@ func Run(opconf OperateConfig) error {
 				log.Printf("Fail to init user %s with error %s (%d). Remove this user\r\n", timelineParams.ScreenName, err, nStatusCode)
 				continue
 			}
-			if arTweets[0].Retweeted {
-				u.TweetTime, err = arTweets[0].RetweetedStatus.CreatedAtTime()
-			} else {
-				u.TweetTime, err = arTweets[0].CreatedAtTime()
+			if len(arTweets) > 0 {
+				if arTweets[0].Retweeted {
+					u.TweetTime, err = arTweets[0].RetweetedStatus.CreatedAtTime()
+				} else {
+					u.TweetTime, err = arTweets[0].CreatedAtTime()
+				}
 			}
 			if err != nil {
 				log.Printf("Fail to init user %s with error %s. Remove this user\r\n", timelineParams.ScreenName, err)
