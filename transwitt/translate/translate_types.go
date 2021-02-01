@@ -21,3 +21,9 @@ type PapagoResponseMessage struct {
 type PapagoResponseResult struct {
 	TranslatedText string `json:"translatedText"`
 }
+
+type PapagoRequest struct {
+	Target string `json:"target"`
+	Source string `json:"source"`
+	Text   string `json:"text"`
+}

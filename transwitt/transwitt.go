@@ -195,11 +195,7 @@ func Run(opconf OperateConfig) error {
 
 				for _, t := range arTweets {
 					// Convert time
-					if t.Retweeted {
-						tCreatedAt, err = t.RetweetedStatus.CreatedAtTime()
-					} else {
-						tCreatedAt, err = t.CreatedAtTime()
-					}
+					tCreatedAt, err = t.CreatedAtTime()
 					if err != nil {
 						log.Printf("Fail to convert CreatedAtTime user %s with error %s\r\n", timelineParams.ScreenName, err)
 						continue
@@ -207,17 +203,23 @@ func Run(opconf OperateConfig) error {
 
 					// Compare time
 					if u.TweetTime.Before(tCreatedAt) {
-						log.Println(tCreatedAt.Local().String())
-						log.Println(t.FullText)
+						sTweetText := ""
+						if t.RetweetedStatus != nil { // if retweeted
+							sTweetText = t.RetweetedStatus.FullText
+						} else {
+							sTweetText = t.FullText
+						}
+						log.Printf("User %s\r\nTime %s\r\nTweet %s\r\n", u.ScreenID, tCreatedAt, sTweetText)
 						Users[i].TweetTime = tCreatedAt
-						sTranslated, err := papago.GetTranslate(u.Language.Source, u.Language.Target, t.FullText)
+						sTranslated, err := papago.GetTranslate(u.Language.Source, u.Language.Target, sTweetText)
 						if err != nil {
 							sTranslated = "[Translate Error!!]\r\n" + err.Error() + "\r\n"
-							sTranslated += t.FullText
+							sTranslated += sTweetText
 							log.Println("Fail to translate with error", err)
 						}
 
 						sMessage := fmt.Sprintf("[%s] from [%s]\r\n%s", tCreatedAt.Local().String(), u.Nickname, sTranslated)
+
 						if telegram != nil {
 							msg := tgbotapi.NewMessage(nTelegramAdminID, sMessage)
 							_, err = telegram.Send(msg)

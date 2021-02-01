@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 )
@@ -52,12 +51,21 @@ func (p Papago) GetTranslate(sSource, sTarget, sText string) (string, error) {
 	if indexOf(sTarget, p.AvailableTargetLanguages(sSource)) == -1 {
 		return "", errors.New("Target language " + sTarget + " cannot translate from " + sSource + " in Papago")
 	}
-
-	req, err := http.NewRequest(http.MethodPost, PapagoAPIURL, bytes.NewBufferString(fmt.Sprintf(`{"source":"%s","target":"%s","text":"%s"}`, sSource, sTarget, sText)))
-	if err != nil {
-		return "", nil
+	preq := PapagoRequest{
+		Target: sTarget,
+		Source: sSource,
+		Text:   sText,
 	}
-	req.Header.Add("Content-Type", "application/json")
+	bufRequest, err := json.Marshal(preq)
+	if err != nil {
+		return "", err
+	}
+	req, err := http.NewRequest(http.MethodPost, PapagoAPIURL, bytes.NewBuffer(bufRequest))
+	if err != nil {
+		return "", err
+	}
+
+	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
 	req.Header.Add("X-Naver-Client-Id", p.ClientID)
 	req.Header.Add("X-Naver-Client-Secret", p.ClientSecret)
 	client := &http.Client{}
@@ -71,12 +79,12 @@ func (p Papago) GetTranslate(sSource, sTarget, sText string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	pr := PapagoResponse{}
-	if err = json.Unmarshal(resBody, &pr); err != nil {
+	pres := PapagoResponse{}
+	if err = json.Unmarshal(resBody, &pres); err != nil {
 		return "", err
 	}
-	if pr.ErrorMessage != "" {
+	if pres.ErrorMessage != "" {
 		return "", errors.New(string(resBody))
 	}
-	return pr.Message.Result.TranslatedText, nil
+	return pres.Message.Result.TranslatedText, nil
 }
